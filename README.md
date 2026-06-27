@@ -34,6 +34,10 @@ trajectory_extraction/
   run_full_pipeline_v3.py  # production trajectory-extraction entry point
   internal/                # runtime helper scripts and MATLAB dependencies
 
+Cellular_feature_extraction/
+  extract_features.py      # Core feature extractor from images of nucleus
+  extract_nuclear_features.py  # Standalone nuclear morphology extraction from binary masks
+
 trajectory_to_nuclear_features/
   traditional_ml/          # grouped Elastic Net and Random Forest baselines
   deep_learning/           # CNN/LSTM and engineered-feature neural models
@@ -78,7 +82,15 @@ R_loci{N}_traj_m2DGaussian_cleaned.csv
 Each trajectory CSV contains `frame`, `x_nm`, and `y_nm` columns in whole-image
 coordinates.
 
-## Stage 3: Trajectory-To-Feature Modeling
+## Stage 3: Cellular Feature Extraction
+
+Extracts spatial and morphological features from nuclear segmentation masks and the location of DNA locus.
+
+```bash
+python3 extract_features.py /path/to/nucleus_folder [--pixel-size 108.33]
+```
+
+## Stage 4: Trajectory-To-Feature Modeling
 
 The modeling workflows ask whether chromatin motion encodes information about
 nuclear morphology, local chromatin density, and locus spatial context.
