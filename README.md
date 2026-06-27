@@ -34,6 +34,10 @@ trajectory_extraction/
   run_full_pipeline_v3.py  # production trajectory-extraction entry point
   internal/                # runtime helper scripts and MATLAB dependencies
 
+Cellular_feature_extraction/
+  extract_features.py      # Core feature extractor from images of nucleus
+  extract_nuclear_features.py  # Standalone nuclear morphology extraction from binary masks
+
 trajectory_to_nuclear_features/
   traditional_ml/          # grouped Elastic Net and Random Forest baselines
   deep_learning/           # CNN/LSTM and engineered-feature neural models
