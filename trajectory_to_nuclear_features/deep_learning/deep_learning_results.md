@@ -28,7 +28,7 @@ locally, or mount Google Drive when run on Colab.
 
 |                     |                                                                                                   |
 | ------------------- | ------------------------------------------------------------------------------------------------- |
-| **Source**          | OligoLiveFISH — live-cell FISH                                                                    |
+| **Source**          | OligoLiveFISH — live-cell FISH, U2OS cells, chr3 loci                                             |
 | **Trajectories**    | 751 (skipped 208 because <3 consecutive steps)                                                    |
 | **Nuclei**          | 356 unique                                                                                        |
 | **Locus**           | Green channel (G loci) only — see rationale below                                                |
@@ -39,14 +39,15 @@ locally, or mount Google Drive when run on Colab.
 
 ### Why G loci only
 
-Our entire dataset contains 2 parts: (1) The chr3 dataset has three imaging channels targeting loci at chr3:195M (G, 488nm), chr3:195.7M (P, 565nm), and chr3:198M (R, 647nm). 
-(2) In the other dataset, the channel labeled by 488 fluorophore is automatically assigned to be G loci, regardless of the labeled genomic loci. This means that the dataset contains a wide range of nuclear loci and labeling efficiency. 
-Only G loci are used for the following reasons:
+The chr3 dataset has three imaging channels targeting loci at chr3:195M (G, 488nm), chr3:195.7M (P, 565nm), and chr3:198M (R, 647nm). Only G loci are used for the following reasons:
 
 **1. Data abundance.** G has 2,601 unique (nucleus, locus) trajectory pairs in the feature dataset vs 1,296 for P and 506 for R. Using G maximizes the training set while keeping a consistent input domain.
 
-**2. Avoiding redundancy and information leakage**. In the chromosome 3 dataset, the G, P, and R loci reside on the same chromosome and are separated by only a few megabases. Their spatial positions and dynamics are therefore highly correlated. Including trajectories from all three loci could introduce redundant samples and potentially leak information between the training, validation, and test sets if correlated loci from the same nucleus are split across different partitions. Restricting the analysis to the G locus ensures greater statistical independence between samples and enables a more rigorous evaluation of model performance.
+**2. Channel-specific intensity baselines.** The three fluorescent dyes have different brightnesses, different probe binding efficiencies, and probe different genomic positions with different local chromatin environments. Empirically, local_intensity_mean distributions differ substantially across channels: G median ≈ 152 a.u., P median ≈ 122 a.u., R median ≈ 113 a.u., and G has thousands of near-saturated measurements absent in P and R. If channels were pooled, a model predicting local_intensity_mean would primarily learn "which channel is this" rather than chromatin compaction state — a confound, not a signal.
 
+**3. Genomic position consistency.** Each locus sits at a distinct position on chr3, embedded in a different chromatin domain with different average mobility characteristics. The 195M, 195.7M, and 198M loci are ~3–6 Mb apart. Pooling would require the model to generalize across loci with systematically different biophysical properties, making the learning problem harder and less interpretable.
+
+**4. Conceptual scope.** This work asks whether a *single locus trajectory* encodes nucleus-level state. That question is cleanest when the locus is held fixed. Multi-locus joint modeling — using all three channels as simultaneous inputs to a shared representation — is a natural extension that would require a different architecture (concatenated inputs, graph-based, or cross-attention) and is deferred to future work.
 
 ---
 
@@ -281,16 +282,16 @@ Applied on-the-fly during training only (never at test time), Cartesian input on
 | Target               | RF (random split) | RF-eng tuned* | MLP-eng        | Best DL                        | Signal    |
 | -------------------- | ----------------- | ------------- | -------------- | ------------------------------ | --------- |
 | local_intensity_mean | 0.259             | 0.620         | −0.013 ± 0.055 | **0.602 ± 0.173** (CNN-medium) | ✓ real    |
-| nuc_intensity_mean   | 0.255             | 0.657         | −0.000 ± 0.084 | **0.614 ± 0.126** (CNN-medium) | ✓ stable  |
+| nuc_intensity_mean   | 0.255             | 0.518         | −0.000 ± 0.084 | **0.614 ± 0.126** (CNN-medium) | ✓ stable  |
 | area_um2             | 0.393             | 0.252         | −0.064 ± 0.011 | 0.086 ± 0.285 (LSTM-large)     | uncertain |
 | local_to_nuc_ratio   | —                 | 0.247         | −0.013 ± 0.060 | 0.096 ± 0.290 (LSTM-small)     | uncertain |
-| dist_to_membrane_nm  | —                 | 0.165         | 0.003 ± 0.112  | 0.006 ± 0.090 (LSTM-medium)    | ≈ zero    |
+| dist_to_membrane_nm  | —                 | 0.190         | 0.003 ± 0.112  | 0.006 ± 0.090 (LSTM-medium)    | weak RF   |
 | dist_to_centroid_nm  | 0.050             | 0.132         | −0.138 ± 0.098 | 0.049 ± 0.038 (LSTM-medium)    | ≈ zero    |
-| norm_radial_pos      | —                 | 0.109         | −0.087 ± 0.044 | −0.022 ± 0.083 (CNN-medium)    | ≈ zero    |
+| norm_radial_pos      | —                 | 0.056         | −0.087 ± 0.044 | −0.022 ± 0.083 (CNN-medium)    | ≈ zero    |
 
 
 RF (random split): batch 1 only (515 traj), random row split — partially inflated by same-nucleus leakage.  
-*RF-eng tuned: Kevin's RandomizedSearchCV + GroupKFold on 18 engineered features, nucleus-level split, single seed (random_state=42) from the `grouped_model_comparison.csv`. MLP-eng and Best DL use nucleus-level split, mean ± std over 3 seeds.
+*RF-eng tuned: RandomizedSearchCV + GroupKFold on 18 engineered features, nucleus-level split, single seed (random_state=42) from `data/chr3/traditional_ml_results/grouped_model_comparison.csv`, regenerated in the current NumPy 2 environment. MLP-eng and Best DL use nucleus-level split, mean ± std over 3 seeds.
 
 ---
 
@@ -308,17 +309,17 @@ MLP-eng (nucleus-level)         ← isolates architecture contribution
 Best DL (nucleus-level)         ← isolates representation contribution
 ```
 
-**Finding:** MLP-eng ≈ 0 for intensity targets while both tuned RF-eng (0.62) and Best DL (0.60) succeed. The signal is not recoverable by a neural net on engineered summaries — it requires either the raw trajectory representation (DL) or a tree-based model with the right inductive bias (RF). The DL advantage over tuned RF is methodological convenience (no feature engineering required), not a performance gain.
+**Finding:** MLP-eng ≈ 0 for intensity targets while tuned RF-eng and Best DL both recover compaction signal. RF-eng matches Best DL for local_intensity_mean (0.620 vs. 0.602), while Best DL is stronger for nuc_intensity_mean (0.614 vs. 0.518). The signal is not recoverable by a neural net on engineered summaries — it requires either the raw trajectory representation (DL) or a tree-based model with the right inductive bias (RF). The DL advantage over tuned RF is partly methodological convenience (no feature engineering required) and partly target-dependent performance.
 
 ---
 
 ## 12. Key Findings
 
-1. **Raw trajectory dynamics encode chromatin compaction** (intensity targets, R² ≈ 0.60), but **not spatial position** within the nucleus (positional targets, R² ≈ 0 across all models).
+1. **Raw trajectory dynamics encode chromatin compaction** (intensity targets, R² ≈ 0.60), while spatial-position targets are weak and model-dependent. Tuned RF captures modest signal for dist_to_membrane_nm and dist_to_centroid_nm, but raw-step DL remains near zero for these positional targets.
 2. **Single-seed evaluation is unreliable at this sample size.** CNN-large with one lucky seed gave R²=0.684 for local_intensity_mean; multi-seed gives 0.484 ± 0.320. CNN-medium is both more accurate (0.602) and more stable (±0.173).
 3. **The leakage finding:** The original random-split RF R²=0.393 for area_um2 collapses to 0.252 under a properly tuned nucleus-level split (and to −0.108 ± 0.037 for our untuned 3-seed RF). A substantial fraction of the original reported advantage was same-nucleus information leakage; the remainder survives with proper tuning.
 4. **Augmentation counterintuitively hurts intensity targets** (ΔR² = −0.179 for local_intensity_mean). Time reversal disrupts the temporal autocorrelation structure that carries the compaction signal. It slightly helps geometric targets (+0.014 to +0.058) where rotational symmetry is more relevant.
-5. **Combined representation wins for CNN; Cartesian wins for LSTM.** CNNs can selectively use features per channel--apparantly LSTMs can't filter noisy additional features effectively at small N.
+5. **Combined representation wins for CNN; Cartesian wins for LSTM.** CNNs can selectively use features per channel, whereas LSTMs appear less able to filter noisy additional features effectively at small N.
 
 ---
 
@@ -326,6 +327,6 @@ Best DL (nucleus-level)         ← isolates representation contribution
 
 Intensity (local_intensity_mean, nuc_intensity_mean) is a proxy for local chromatin compaction. Dense chromatin confines the locus, producing sub-diffusive motion with small, autocorrelated step sizes. The CNN learns this temporal autocorrelation pattern directly from the raw step vector sequence — a pattern that is washed out when the trajectory is compressed into 18 scalar summary statistics.
 
-Spatial position (membrane distance, centroid distance, radial position) leaves no trace in step vectors, which are relative displacements. The model cannot reconstruct an absolute nuclear coordinate from local dynamics alone.
+Spatial position (membrane distance, centroid distance, radial position) is weakly represented in raw step vectors, which are relative displacements rather than absolute coordinates. The raw-step DL models therefore cannot reliably reconstruct nuclear location from local dynamics alone. Tuned RF on engineered summaries recovers modest, target-dependent signal for some geometric targets, likely from correlations between trajectory statistics and nuclear morphology rather than direct coordinate information.
 
 ---

@@ -1,8 +1,8 @@
 # Core scientific Python stack
-numpy>=1.26,<2
-scipy>=1.11
-pandas>=2.0
-scikit-learn>=1.3
+numpy>=2.0,<3
+scipy>=1.13
+pandas>=2.2
+scikit-learn>=1.4
 
 # Image I/O and segmentation
 Pillow>=10.0
