@@ -28,7 +28,7 @@ locally, or mount Google Drive when run on Colab.
 
 |                     |                                                                                                   |
 | ------------------- | ------------------------------------------------------------------------------------------------- |
-| **Source**          | OligoLiveFISH — live-cell FISH, U2OS cells, chr3 loci                                             |
+| **Source**          | OligoLiveFISH — live-cell FISH                                             |
 | **Trajectories**    | 751 (skipped 208 because <3 consecutive steps)                                                    |
 | **Nuclei**          | 356 unique                                                                                        |
 | **Locus**           | Green channel (G loci) only — see rationale below                                                |
@@ -39,15 +39,14 @@ locally, or mount Google Drive when run on Colab.
 
 ### Why G loci only
 
-The chr3 dataset has three imaging channels targeting loci at chr3:195M (G, 488nm), chr3:195.7M (P, 565nm), and chr3:198M (R, 647nm). Only G loci are used for the following reasons:
+Our entire dataset contains 2 parts: (1) The chr3 dataset has three imaging channels targeting loci at chr3:195M (G, 488nm), chr3:195.7M (P, 565nm), and chr3:198M (R, 647nm). 
+(2) In the other dataset, the channel labeled by 488 fluorophore is automatically assigned to be G loci, regardless of the labeled genomic loci. This means that the dataset contains a wide range of nuclear loci and labeling efficiency. 
+Only G loci are used for the following reasons:
 
 **1. Data abundance.** G has 2,601 unique (nucleus, locus) trajectory pairs in the feature dataset vs 1,296 for P and 506 for R. Using G maximizes the training set while keeping a consistent input domain.
 
-**2. Channel-specific intensity baselines.** The three fluorescent dyes have different brightnesses, different probe binding efficiencies, and probe different genomic positions with different local chromatin environments. Empirically, local_intensity_mean distributions differ substantially across channels: G median ≈ 152 a.u., P median ≈ 122 a.u., R median ≈ 113 a.u., and G has thousands of near-saturated measurements absent in P and R. If channels were pooled, a model predicting local_intensity_mean would primarily learn "which channel is this" rather than chromatin compaction state — a confound, not a signal.
+**2. Avoiding redundancy and information leakage**. In the chromosome 3 dataset, the G, P, and R loci reside on the same chromosome and are separated by only a few megabases. Their spatial positions and dynamics are therefore highly correlated. Including trajectories from all three loci could introduce redundant samples and potentially leak information between the training, validation, and test sets if correlated loci from the same nucleus are split across different partitions. Restricting the analysis to the G locus ensures greater statistical independence between samples and enables a more rigorous evaluation of model performance.
 
-**3. Genomic position consistency.** Each locus sits at a distinct position on chr3, embedded in a different chromatin domain with different average mobility characteristics. The 195M, 195.7M, and 198M loci are ~3–6 Mb apart. Pooling would require the model to generalize across loci with systematically different biophysical properties, making the learning problem harder and less interpretable.
-
-**4. Conceptual scope.** This work asks whether a *single locus trajectory* encodes nucleus-level state. That question is cleanest when the locus is held fixed. Multi-locus joint modeling — using all three channels as simultaneous inputs to a shared representation — is a natural extension that would require a different architecture (concatenated inputs, graph-based, or cross-attention) and is deferred to future work.
 
 ---
 
