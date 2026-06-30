@@ -122,3 +122,18 @@ the official PyTorch instructions before or after installing this file.
 
 The trajectory-extraction runner bundles its MATLAB helper code under
 `trajectory_extraction/internal/`; no separate SPT code checkout is required.
+
+## Associated Manuscript
+
+Chen*, X., Zhu*, Y., Washington, K., Chan, T.-K., Shamsher, N., and Qi, L.S.
+Genomic DNA Dynamics Predict Chromatin Density Features in Living Cells.
+(* equal contribution)
+
+## Contributors
+
+- Xinyi Chen (Stanford University)
+- Yanyu Zhu (Stanford University)
+- Kenaj Washington (Stanford University)
+- Tse-Kai (Kevin) Chan (Stanford University)
+- Nikhiya Shamsher (Stanford University)
+
