@@ -16,18 +16,18 @@ as an external ZIP archive and should be extracted locally into `data/`.
 
 ## Data Download
 
-Download the modeling data ZIP from Google Drive:
+Download the modeling data ZIP from Stanford Data Repository:
 
-<https://drive.google.com/file/d/157jxYWHadL8MKUz0s2Z_TATcJxMVxGKP/view?usp=sharing>
+<https://doi.org/10.25740/hq850dt4977>
 
-After downloading, extract it so this folder contains a `data/` directory:
+After downloading, rename the folder `OligoLiveFish-ML data/` to `data/` directory:
 
 ```bash
-cd OligoLiveFish/trajectory_to_nuclear_features
+cd OligoLiveFish-ML/trajectory_to_nuclear_features
 unzip /path/to/downloaded_modeling_data.zip
 ```
 
-If the ZIP extracts into a wrapper folder, move or copy its `data/` directory
+If the ZIP extracts into a wrapper folder, move or copy its `OligoLiveFish-ML data/` directory
 to `OligoLiveFish/trajectory_to_nuclear_features/data/`.
 
 The `data/` directory and local ZIP files are ignored by Git.
